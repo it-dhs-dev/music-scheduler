@@ -29,7 +29,26 @@ Alternatively, you can manually install the required modules:
     pip install spotipy ttkthemes
 
 ## Configure Spotify Credentials:
-Replace the placeholder values for SPOTIPY_CLIENT_ID, SPOTIPY_CLIENT_SECRET, and SPOTIPY_REDIRECT_URI with your actual Spotify API credentials in the music_scheduler.py script.
+To get your Spotify Client ID and Client Secret, you'll need to create a Spotify Developer account and register a new application. Here are the steps to do that:
+
+1. Sign up for Spotify Developer:
+
+- Go to the Spotify Developer Dashboard.
+- Log in with your Spotify account. If you don't have one, you'll need to create it.
+- Create a New Application:
+
+2. Once you're logged in, click on the "Create an App" button.
+- Fill in the required details for your application (e.g., name, description, etc.).
+- After filling in the details, click on "Create".
+- Retrieve Client ID and Client Secret:
+
+3. After creating the application, you'll be redirected to the application dashboard.
+- Here, you can see your Client ID and Client Secret. You'll need to click on "Show Client Secret" to reveal it.
+- Set Redirect URI:
+
+4. In the application dashboard, find the "Edit Settings" button and click on it.
+- In the "Redirect URIs" field, add http://localhost:8888/callback or any other URI you plan to use for redirecting after authentication.
+- Click on "Save" to save your settings.
 
 ## Usage
 Run the Script:
