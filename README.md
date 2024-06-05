@@ -44,11 +44,18 @@ To get your Spotify Client ID and Client Secret, you'll need to create a Spotify
 
 3. After creating the application, you'll be redirected to the application dashboard.
 - Here, you can see your Client ID and Client Secret. You'll need to click on "Show Client Secret" to reveal it.
-- Set Redirect URI:
 
-4. In the application dashboard, find the "Edit Settings" button and click on it.
+4. Set Redirect URI:
+
+- In the application dashboard, find the "Edit Settings" button and click on it.
 - In the "Redirect URIs" field, add http://localhost:8888/callback or any other URI you plan to use for redirecting after authentication.
 - Click on "Save" to save your settings.
+
+5. Update Client ID, Client secret and callback
+
+         CLIENT_ID = 'your_spotify_client_id'
+         CLIENT_SECRET = 'your_spotify_client_secret'
+         REDIRECT_URI = 'http://localhost:8888/callback'
 
 ## Usage
 Run the Script:
