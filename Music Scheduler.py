@@ -11,7 +11,7 @@ from ttkthemes import ThemedTk
 # Replace these with your Spotify app credentials
 SPOTIPY_CLIENT_ID = 'your_client_id'
 SPOTIPY_CLIENT_SECRET = 'your_client_secret'
-SPOTIPY_REDIRECT_URI = 'http://localhost:3000/callback'
+SPOTIPY_REDIRECT_URI = 'http://localhost:8888/callback'
 
 # Scope for playing a song
 scope = "user-modify-playback-state user-read-playback-state"
