@@ -16,8 +16,8 @@ To set up and run the Spotify Music Scheduler, follow these steps:
 
 1. **Clone the Repository**:
    ```sh
-   git clone https://github.com/yourusername/spotify-music-scheduler.git
-   cd spotify-music-scheduler
+   git clone https://github.com/it-dhs-dev/music-scheduler.git
+   cd music-scheduler
 
 ## Install Required Python Modules:
 Run the provided script to install necessary Python modules:
