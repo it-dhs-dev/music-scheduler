@@ -9,8 +9,8 @@ import time
 from ttkthemes import ThemedTk
 
 # Replace these with your Spotify app credentials
-SPOTIPY_CLIENT_ID = '9975f0790eaf44d28d8844524b9e9cf5'
-SPOTIPY_CLIENT_SECRET = 'fd86578b43f245df8cadee864b75e4b4'
+SPOTIPY_CLIENT_ID = 'your_client_id'
+SPOTIPY_CLIENT_SECRET = 'your_client_secret'
 SPOTIPY_REDIRECT_URI = 'http://localhost:8888/callback'
 
 # Scope for playing a song
