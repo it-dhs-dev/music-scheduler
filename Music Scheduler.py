@@ -100,7 +100,7 @@ def get_song_name(url):
     return track_info['name']
 
 # Create the main application window
-root = ThemedTk(theme="radiance")
+root = ThemedTk(theme="scidpurple")
 root.title("Spotify Song Player")
 
 # Add a clock at the top
