@@ -9,8 +9,8 @@ import time
 from ttkthemes import ThemedTk
 
 # Replace these with your Spotify app credentials
-SPOTIPY_CLIENT_ID = '9975f0790eaf44d28d8844524b9e9cf5'
-SPOTIPY_CLIENT_SECRET = 'fd86578b43f245df8cadee864b75e4b4'
+SPOTIPY_CLIENT_ID = 'your_client_id'
+SPOTIPY_CLIENT_SECRET = 'your_client_secret'
 SPOTIPY_REDIRECT_URI = 'http://localhost:8888/callback'
 
 # Scope for playing a song
@@ -21,6 +21,7 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=SPOTIPY_CLIENT_ID,
                                                client_secret=SPOTIPY_CLIENT_SECRET,
                                                redirect_uri=SPOTIPY_REDIRECT_URI,
                                                scope=scope))
+
 # Function to play a song on loop for 5 minutes
 def play_song_on_loop(track_id, loop):
     devices = sp.devices()
@@ -28,7 +29,7 @@ def play_song_on_loop(track_id, loop):
         messagebox.showerror("Error", "No active devices found. Please open Spotify on a device and try again.")
         return
     device_id = devices['devices'][0]['id']
-        # Calculate the end time (5 minutes from now)
+    # Calculate the end time (5 minutes from now)
     end_time = datetime.now() + timedelta(minutes=5)
     
     sp.start_playback(device_id=device_id, uris=[f'spotify:track:{track_id}'])
@@ -36,10 +37,10 @@ def play_song_on_loop(track_id, loop):
         sp.repeat('track', device_id=device_id)
     else:
         sp.repeat('off', device_id=device_id)
-        # Continuously check if the current time has reached the end time
+    # Continuously check if the current time has reached the end time
     while datetime.now() < end_time:
         time.sleep(1) # Sleep for 1 second to avoid busy-waiting
-        # Pause the playback and turn off repeat mode
+    # Pause the playback and turn off repeat mode
     sp.pause_playback(device_id=device_id)
     sp.repeat('off', device_id=device_id)
 
@@ -91,9 +92,12 @@ def update_clock():
     root.after(1000, update_clock)
 
 def get_song_name(url):
-    track_id = url.split("/")[-1].split("?")[0]
-    track_info = sp.track(track_id)
-    return track_info['name']
+    try:
+        track_id = url.split("/")[-1].split("?")[0]
+        track_info = sp.track(track_id)
+        return track_info['name']
+    except Exception as e:
+        return "Invalid URL"
 
 def toggle_test_section():
     if test_frame.winfo_viewable():
@@ -102,6 +106,35 @@ def toggle_test_section():
     else:
         test_frame.pack()
         toggle_button.config(text="Hide Test Song URL")
+
+def update_info_window():
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    info_time_label.config(text=now)
+    current_day = datetime.now().strftime("%A")
+    if urls.get(current_day) and urls[current_day]['url'].get():
+        song_name = get_song_name(urls[current_day]['url'].get())
+        info_song_label.config(text=f"Today's Song: {song_name}")
+    else:
+        info_song_label.config(text="Today's Song: None")
+
+    info_window.after(1000, update_info_window)
+
+def create_info_window():
+    global info_window, info_time_label, info_song_label
+    info_window = tk.Toplevel(root)
+    info_window.title("Current Time and Song")
+    info_window.attributes("-topmost", True)
+    
+    info_frame = ttk.Frame(info_window, padding="10 10 10 10")
+    info_frame.pack(fill=tk.BOTH, expand=True)
+
+    info_time_label = ttk.Label(info_frame, font=("Helvetica", 16))
+    info_time_label.pack(pady=10)
+
+    info_song_label = ttk.Label(info_frame, font=("Helvetica", 14))
+    info_song_label.pack(pady=10)
+
+    update_info_window()
 
 # Create the main application window
 root = ThemedTk(theme="scidpurple")
@@ -136,7 +169,7 @@ def save_urls():
         if url:
             song_name = get_song_name(url)
             data['label'].config(text=f"{day} Song: {song_name}")
-                        # Schedule the song playback at 11:25 AM and 2:10 PM
+            # Schedule the song playback at 11:25 AM and 2:10 PM
             schedule_song_playback(day, "11:20", url, data['loop'].get())
             schedule_song_playback(day, "14:10", url, data['loop'].get())
     messagebox.showinfo("Success", "URLs saved and schedules set!")
@@ -188,5 +221,8 @@ test_frame.pack_forget()
 # Save URLs button
 save_button = ttk.Button(root, text="Save URLs and Start Schedule", command=save_urls)
 save_button.pack(pady=10)
+
+# Create the info window
+create_info_window()
 
 root.mainloop()
