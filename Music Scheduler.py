@@ -8,8 +8,9 @@ import threading
 import time
 from ttkthemes import ThemedTk
 import os
+import calendar
 
-# Load sensitive information from environment variables
+# Replace these with your Spotify app credentials
 SPOTIPY_CLIENT_ID = os.getenv('SPOTIPY_CLIENT_ID')
 SPOTIPY_CLIENT_SECRET = os.getenv('SPOTIPY_CLIENT_SECRET')
 SPOTIPY_REDIRECT_URI = 'http://localhost:8888/callback'
@@ -44,17 +45,18 @@ def schedule_song_playback(day, time_str, url, loop):
         while True:
             now = datetime.now()
             scheduled_time = datetime.strptime(time_str, "%H:%M").replace(year=now.year, month=now.month, day=now.day)
-            if now.strftime("%A") == day:
-                if now > scheduled_time:
-                    scheduled_time += timedelta(days=1)
-                sleep_duration = (scheduled_time - now).total_seconds()
-                print(f"Scheduled to play at {scheduled_time}, sleeping for {sleep_duration} seconds")
-                time.sleep(sleep_duration)
-                track_id = url.split("/")[-1].split("?")[0]
-                play_song_on_loop(track_id, loop)
-            else:
-                print(f"Today is {now.strftime('%A')}, waiting for {day}")
-                time.sleep(3600)
+            
+            # Find the next occurrence of the specified day
+            days_ahead = (list(calendar.day_name).index(day) - now.weekday() + 7) % 7
+            if days_ahead == 0 and now > scheduled_time:
+                days_ahead += 7
+            scheduled_time += timedelta(days=days_ahead)
+            
+            sleep_duration = (scheduled_time - now).total_seconds()
+            print(f"Scheduled to play at {scheduled_time}, sleeping for {sleep_duration} seconds")
+            time.sleep(sleep_duration)
+            track_id = url.split("/")[-1].split("?")[0]
+            play_song_on_loop(track_id, loop)
 
     threading.Thread(target=play_at_time, daemon=True).start()
 
