@@ -9,16 +9,43 @@ import time
 from ttkthemes import ThemedTk
 import os
 import calendar
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
 # Replace these with your Spotify app credentials
-SPOTIPY_CLIENT_ID = os.getenv('SPOTIPY_CLIENT_ID')
-SPOTIPY_CLIENT_SECRET = os.getenv('SPOTIPY_CLIENT_SECRET')
+SPOTIPY_CLIENT_ID = '9975f0790eaf44d28d8844524b9e9cf5'
+SPOTIPY_CLIENT_SECRET = 'fd86578b43f245df8cadee864b75e4b4'
 SPOTIPY_REDIRECT_URI = 'http://localhost:8888/callback'
 scope = "user-modify-playback-state user-read-playback-state"
-sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=SPOTIPY_CLIENT_ID,
-                                               client_secret=SPOTIPY_CLIENT_SECRET,
-                                               redirect_uri=SPOTIPY_REDIRECT_URI,
-                                               scope=scope))
+
+# Function to perform Spotify authentication
+def authenticate_spotify():
+    try:
+        auth_manager = SpotifyOAuth(client_id=SPOTIPY_CLIENT_ID,
+                                    client_secret=SPOTIPY_CLIENT_SECRET,
+                                    redirect_uri=SPOTIPY_REDIRECT_URI,
+                                    scope=scope)
+        # Get the cached token or prompt for user authorization
+        token_info = auth_manager.get_cached_token()
+        if not token_info:
+            auth_url = auth_manager.get_authorize_url()
+            print(f"Please authorize your Spotify account by visiting:\n{auth_url}")
+            auth_response = input("Enter the URL you were redirected to: ")
+            token_info = auth_manager.parse_response_code(auth_response)
+        
+        # Create a Spotify client object
+        global sp
+        sp = spotipy.Spotify(auth_manager=auth_manager)
+        logging.info("Successfully authenticated with Spotify!")
+    except Exception as e:
+        logging.error(f"Error in Spotify authentication: {e}")
+        messagebox.showerror("Authentication Error", "Failed to authenticate with Spotify. Please check your credentials.")
+
+# Authenticate Spotify on script startup
+authenticate_spotify()
+
 
 def play_song_on_loop(track_id, loop):
     try:
@@ -38,25 +65,29 @@ def play_song_on_loop(track_id, loop):
         sp.pause_playback(device_id=device_id)
         sp.repeat('off', device_id=device_id)
     except Exception as e:
+        logging.error(f"Error in play_song_on_loop: {e}")
         messagebox.showerror("Error", str(e))
 
 def schedule_song_playback(day, time_str, url, loop):
     def play_at_time():
-        while True:
-            now = datetime.now()
-            scheduled_time = datetime.strptime(time_str, "%H:%M").replace(year=now.year, month=now.month, day=now.day)
-            
-            # Find the next occurrence of the specified day
-            days_ahead = (list(calendar.day_name).index(day) - now.weekday() + 7) % 7
-            if days_ahead == 0 and now > scheduled_time:
-                days_ahead += 7
-            scheduled_time += timedelta(days=days_ahead)
-            
-            sleep_duration = (scheduled_time - now).total_seconds()
-            print(f"Scheduled to play at {scheduled_time}, sleeping for {sleep_duration} seconds")
-            time.sleep(sleep_duration)
-            track_id = url.split("/")[-1].split("?")[0]
-            play_song_on_loop(track_id, loop)
+        try:
+            while True:
+                now = datetime.now()
+                scheduled_time = datetime.strptime(time_str, "%H:%M").replace(year=now.year, month=now.month, day=now.day)
+                
+                # Find the next occurrence of the specified day
+                days_ahead = (list(calendar.day_name).index(day) - now.weekday() + 7) % 7
+                if days_ahead == 0 and now > scheduled_time:
+                    days_ahead += 7
+                scheduled_time += timedelta(days=days_ahead)
+                
+                sleep_duration = (scheduled_time - now).total_seconds()
+                logging.info(f"Scheduled to play at {scheduled_time}, sleeping for {sleep_duration} seconds")
+                time.sleep(sleep_duration)
+                track_id = url.split("/")[-1].split("?")[0]
+                play_song_on_loop(track_id, loop)
+        except Exception as e:
+            logging.error(f"Error in play_at_time thread: {e}")
 
     threading.Thread(target=play_at_time, daemon=True).start()
 
@@ -74,6 +105,7 @@ def play_test_song():
         sp.repeat('track', device_id=test_device_id)
         messagebox.showinfo("Success", "Playing the test song!")
     except Exception as e:
+        logging.error(f"Error in play_test_song: {e}")
         messagebox.showerror("Error", str(e))
 
 def stop_test_song():
@@ -83,6 +115,7 @@ def stop_test_song():
             sp.repeat('off', device_id=test_device_id)
             messagebox.showinfo("Success", "Test song stopped!")
     except Exception as e:
+        logging.error(f"Error in stop_test_song: {e}")
         messagebox.showerror("Error", str(e))
 
 def update_clock():
@@ -90,13 +123,32 @@ def update_clock():
     clock_label.config(text=now)
     root.after(1000, update_clock)
 
-def get_song_name(url):
-    try:
-        track_id = url.split("/")[-1].split("?")[0]
-        track_info = sp.track(track_id)
-        return track_info['name']
-    except Exception as e:
-        return "Invalid URL"
+def validate_url_async(url, day):
+    def validate_url():
+        try:
+            track_id = url.split("/")[-1].split("?")[0]
+            track_info = sp.track(track_id)
+            song_name = track_info['name']
+        except Exception as e:
+            logging.error(f"Error validating URL: {e}")
+            song_name = "Invalid URL"
+        
+        def update_label():
+            urls[day]['label'].config(text=f"{day} Song: {song_name}")
+
+        root.after(0, update_label)
+
+    threading.Thread(target=validate_url).start()
+
+def save_urls():
+    for day, data in urls.items():
+        url = data['url'].get()
+        if url:
+            validate_url_async(url, day)
+            logging.info(f"Scheduling {day} at {data['time'].get()} and {data['lunch_time'].get()}")
+            schedule_song_playback(day, data['time'].get(), url, data['loop'].get())
+            schedule_song_playback(day, data['lunch_time'].get(), url, data['loop'].get())
+    messagebox.showinfo("Success", "URLs saved and schedules set!")
 
 def toggle_test_section():
     global test_window
@@ -104,30 +156,6 @@ def toggle_test_section():
         create_test_window()
     else:
         test_window.lift()
-
-def update_info_window():
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    info_time_label.config(text=now)
-    current_day = datetime.now().strftime("%A")
-    if urls.get(current_day) and urls[current_day]['url'].get():
-        song_name = get_song_name(urls[current_day]['url'].get())
-        info_song_label.config(text=f"Today's Song: {song_name}")
-    else:
-        info_song_label.config(text="Today's Song: None")
-    info_window.after(1000, update_info_window)
-
-def create_info_window():
-    global info_window, info_time_label, info_song_label
-    info_window = tk.Toplevel(root)
-    info_window.title("Current Time and Song")
-    info_window.attributes("-topmost", True)
-    info_frame = ttk.Frame(info_window, padding="10 10 10 10")
-    info_frame.pack(fill=tk.BOTH, expand=True)
-    info_time_label = ttk.Label(info_frame, font=("Helvetica", 16))
-    info_time_label.pack(pady=10)
-    info_song_label = ttk.Label(info_frame, font=("Helvetica", 14))
-    info_song_label.pack(pady=10)
-    update_info_window()
 
 def change_music_times():
     def save_times():
@@ -154,7 +182,7 @@ def change_music_times():
         ttk.Entry(change_times_frame, textvariable=urls[day]['time'], width=10).grid(row=i+1, column=2, padx=5, pady=5, sticky='w')
         ttk.Label(change_times_frame, text="Lunch:").grid(row=i+1, column=3, padx=5, pady=5, sticky='w')
         ttk.Entry(change_times_frame, textvariable=urls[day]['lunch_time'], width=10).grid(row=i+1, column=4, padx=5, pady=5, sticky='w')
-    ttk.Button(change_times_frame, text="Save", command=save_times).grid(row=len(days)+2, columnspan=5, pady=10)
+    ttk.Button(change_times_frame, text="Save Times", command=save_times).grid(row=len(days)+1, column=0, columnspan=5, pady=10)
 
 def create_test_window():
     global test_window, test_url_entry
@@ -199,16 +227,14 @@ urls = {
     'Friday': {'url': tk.StringVar(), 'label': None, 'loop': tk.BooleanVar(value=True), 'time': tk.StringVar(value='11:25'), 'lunch_time': tk.StringVar(value='14:10'), 'time_display': None, 'lunch_time_display': None}
 }
 
-def save_urls():
-    for day, data in urls.items():
-        url = data['url'].get()
-        if url:
-            song_name = get_song_name(url)
-            data['label'].config(text=f"{day} Song: {song_name}")
-            print(f"Scheduling {day} at {data['time'].get()} and {data['lunch_time'].get()}")
-            schedule_song_playback(day, data['time'].get(), url, data['loop'].get())
-            schedule_song_playback(day, data['lunch_time'].get(), url, data['loop'].get())
-    messagebox.showinfo("Success", "URLs saved and schedules set!")
+def validate_url(url):
+    try:
+        track_id = url.split("/")[-1].split("?")[0]
+        track_info = sp.track(track_id)
+        return track_info['name']
+    except Exception as e:
+        logging.error(f"Error validating URL: {e}")
+        return "Invalid URL"
 
 row_counter = 1
 for day, data in urls.items():
@@ -237,7 +263,5 @@ save_button.pack(pady=10)
 
 change_times_button = ttk.Button(daily_frame, text="Music Times", command=change_music_times)
 change_times_button.grid(row=0, column=2, sticky="e", padx=10, pady=10)
-
-create_info_window()
 
 root.mainloop()
