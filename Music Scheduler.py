@@ -15,8 +15,8 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 # Replace these with your Spotify app credentials
-SPOTIPY_CLIENT_ID = '9975f0790eaf44d28d8844524b9e9cf5'
-SPOTIPY_CLIENT_SECRET = 'fd86578b43f245df8cadee864b75e4b4'
+SPOTIPY_CLIENT_ID = 'your_spotify_client_id'
+SPOTIPY_CLIENT_SECRET = 'your_spotify_client_secret'
 SPOTIPY_REDIRECT_URI = 'http://localhost:8888/callback'
 scope = "user-modify-playback-state user-read-playback-state"
 
