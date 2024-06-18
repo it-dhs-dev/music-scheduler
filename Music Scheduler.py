@@ -14,7 +14,7 @@ import logging
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 
-# Spotify credentials and scope
+# Replace these with your Spotify app credentials
 SPOTIPY_CLIENT_ID = 'your_spotify_client_id'
 SPOTIPY_CLIENT_SECRET = 'your_spotify_client_secret'
 SPOTIPY_REDIRECT_URI = 'http://localhost:8888/callback'
