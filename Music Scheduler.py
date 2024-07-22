@@ -65,17 +65,20 @@ class SpotifyApp:
             logging.error(f"Error in play_song_on_loop: {e}")
             messagebox.showerror("Error", str(e))
 
-    def schedule_song_playback(self, day, time_str, url, loop):
-        # If there's an existing scheduled thread for the day, stop it
-        if day in self.scheduled_threads:
-            self.scheduled_threads[day]['event'].set()
+    def schedule_song_playback(self, day, time_str, url, loop, period):
+        # Use distinct keys for recess and lunch schedules
+        schedule_key = f"{day}_{period}"
+        
+        # If there's an existing scheduled thread for the period, stop it
+        if schedule_key in self.scheduled_threads:
+            self.scheduled_threads[schedule_key]['event'].set()
 
         stop_event = threading.Event()
-        self.scheduled_threads[day] = {
+        self.scheduled_threads[schedule_key] = {
             'thread': threading.Thread(target=self.play_at_time, args=(day, time_str, url, loop, stop_event), daemon=True),
             'event': stop_event
         }
-        self.scheduled_threads[day]['thread'].start()
+        self.scheduled_threads[schedule_key]['thread'].start()
 
     def play_at_time(self, day, time_str, url, loop, stop_event):
         try:
@@ -159,8 +162,8 @@ class SpotifyApp:
             if url:
                 self.validate_url_async(url, day)
                 logging.info(f"Scheduling {day} at {data['time'].get()} and {data['lunch_time'].get()}")
-                self.schedule_song_playback(day, data['time'].get(), url, data['loop'].get())
-                self.schedule_song_playback(day, data['lunch_time'].get(), url, data['loop'].get())
+                self.schedule_song_playback(day, data['time'].get(), url, data['loop'].get(), 'recess')
+                self.schedule_song_playback(day, data['lunch_time'].get(), url, data['loop'].get(), 'lunch')
         messagebox.showinfo("Success", "URLs saved and schedules set!")
 
     def load_urls(self):
@@ -185,8 +188,8 @@ class SpotifyApp:
                 data['lunch_time_display'].config(text=f"Lunch: {data['lunch_time'].get()}")
                 url = data['url'].get()
                 if url:
-                    self.schedule_song_playback(day, data['time'].get(), url, data['loop'].get())
-                    self.schedule_song_playback(day, data['lunch_time'].get(), url, data['loop'].get())
+                    self.schedule_song_playback(day, data['time'].get(), url, data['loop'].get(), 'recess')
+                    self.schedule_song_playback(day, data['lunch_time'].get(), url, data['loop'].get(), 'lunch')
             messagebox.showinfo("Success", "Times saved and schedules set!")
             change_times_window.destroy()
 
@@ -194,83 +197,73 @@ class SpotifyApp:
         change_times_window.title("Change Music Times")
         change_times_window.attributes("-topmost", True)
         change_times_frame = ttk.Frame(change_times_window, padding="10 10 10 10")
-        change_times_frame.pack()
-        ttk.Label(change_times_frame, text="Change Music Times", font=("Helvetica", 14, "bold")).grid(row=0, column=0, columnspan=3, pady=10)
-        days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-        for i, day in enumerate(days):
-            ttk.Label(change_times_frame, text=day).grid(row=i + 1, column=0, padx=5, pady=5, sticky='w')
-            ttk.Label(change_times_frame, text="Recess:").grid(row=i + 1, column=1, padx=5, pady=5, sticky='w')
-            ttk.Entry(change_times_frame, textvariable=self.urls[day]['time'], width=10).grid(row=i + 1, column=2, padx=5, pady=5, sticky='w')
-            ttk.Label(change_times_frame, text="Lunch:").grid(row=i + 1, column=3, padx=5, pady=5, sticky='w')
-            ttk.Entry(change_times_frame, textvariable=self.urls[day]['lunch_time'], width=10).grid(row=i + 1, column=4, padx=5, pady=5, sticky='w')
-        ttk.Button(change_times_frame, text="Save Times", command=save_times).grid(row=len(days) + 1, column=0, columnspan=5, pady=10)
+        change_times_frame.grid(column=0, row=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+
+        for i, (day, data) in enumerate(self.urls.items()):
+            ttk.Label(change_times_frame, text=day).grid(column=0, row=i, sticky=tk.W)
+            ttk.Label(change_times_frame, text="Recess:").grid(column=1, row=i, sticky=tk.W)
+            ttk.Entry(change_times_frame, textvariable=data['time'], width=10).grid(column=2, row=i, sticky=tk.W)
+            ttk.Label(change_times_frame, text="Lunch:").grid(column=3, row=i, sticky=tk.W)
+            ttk.Entry(change_times_frame, textvariable=data['lunch_time'], width=10).grid(column=4, row=i, sticky=tk.W)
+
+        ttk.Button(change_times_frame, text="Save Times", command=save_times).grid(column=0, row=len(self.urls), columnspan=5)
 
     def create_test_window(self):
         self.test_window = tk.Toplevel(self.root)
-        self.test_window.title("Test Song Player")
+        self.test_window.title("Test Section")
         self.test_window.attributes("-topmost", True)
         test_frame = ttk.Frame(self.test_window, padding="10 10 10 10")
-        test_frame.pack()
-        ttk.Label(test_frame, text="Enter Spotify URL for Test Song:", font=("Helvetica", 14, "bold")).grid(row=0, column=0, columnspan=2, pady=10)
+        test_frame.grid(column=0, row=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+
         self.test_url_entry = ttk.Entry(test_frame, width=50)
-        self.test_url_entry.grid(row=1, column=0, columnspan=2, padx=5, pady=5, sticky='w')
-        ttk.Button(test_frame, text="Play Test Song", command=self.play_test_song).grid(row=2, column=0, padx=5, pady=5, sticky='w')
-        ttk.Button(test_frame, text="Stop Test Song", command=self.stop_test_song).grid(row=2, column=1, padx=5, pady=5, sticky='w')
+        self.test_url_entry.grid(column=0, row=0, sticky=(tk.W, tk.E))
+        self.test_url_entry.insert(0, "Enter Spotify URL for testing...")
+
+        test_buttons_frame = ttk.Frame(test_frame)
+        test_buttons_frame.grid(column=0, row=1, sticky=(tk.W, tk.E))
+        ttk.Button(test_buttons_frame, text="Play Test Song", command=self.play_test_song).grid(column=0, row=0)
+        ttk.Button(test_buttons_frame, text="Stop Test Song", command=self.stop_test_song).grid(column=1, row=0)
 
     def init_urls(self):
-        return {
-            'Monday': {'url': tk.StringVar(), 'label': None, 'loop': tk.BooleanVar(value=True), 'time': tk.StringVar(value='11:25'), 'lunch_time': tk.StringVar(value='14:10'), 'time_display': None, 'lunch_time_display': None},
-            'Tuesday': {'url': tk.StringVar(), 'label': None, 'loop': tk.BooleanVar(value=True), 'time': tk.StringVar(value='11:25'), 'lunch_time': tk.StringVar(value='14:10'), 'time_display': None, 'lunch_time_display': None},
-            'Wednesday': {'url': tk.StringVar(), 'label': None, 'loop': tk.BooleanVar(value=True), 'time': tk.StringVar(value='11:25'), 'lunch_time': tk.StringVar(value='14:10'), 'time_display': None, 'lunch_time_display': None},
-            'Thursday': {'url': tk.StringVar(), 'label': None, 'loop': tk.BooleanVar(value=True), 'time': tk.StringVar(value='11:25'), 'lunch_time': tk.StringVar(value='14:10'), 'time_display': None, 'lunch_time_display': None},
-            'Friday': {'url': tk.StringVar(), 'label': None, 'loop': tk.BooleanVar(value=True), 'time': tk.StringVar(value='11:25'), 'lunch_time': tk.StringVar(value='14:10'), 'time_display': None, 'lunch_time_display': None}
-        }
+        days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+        urls = {}
+        for day in days:
+            urls[day] = {
+                'url': tk.StringVar(),
+                'time': tk.StringVar(value="11:25"),
+                'lunch_time': tk.StringVar(value="14:10"),
+                'label': ttk.Label(self.root, text=f"{day} Song:"),
+                'time_display': ttk.Label(self.root, text="Recess: 11:25"),
+                'lunch_time_display': ttk.Label(self.root, text="Lunch: 14:10"),
+                'loop': tk.BooleanVar(value=True)  # Set loop to True by default
+            }
+        return urls
 
     def create_ui(self):
-        # Clock display
-        clock_frame = tk.Frame(self.root)
-        clock_frame.pack(pady=10)
-        self.clock_label = tk.Label(clock_frame, font=("Helvetica", 16))
-        self.clock_label.pack()
-        
-        # Daily song URLs frame
-        daily_frame = ttk.Frame(self.root, padding="10 10 10 10")
-        daily_frame.pack(pady=10, fill=tk.X, padx=10)
-        daily_label = ttk.Label(daily_frame, text="Daily Song URLs", font=("Helvetica", 14, "bold"))
-        daily_label.grid(row=0, column=0, columnspan=3, pady=10)
-        
-        row_counter = 1
-        for day, data in self.urls.items():
-            day_frame = ttk.Frame(daily_frame)
-            day_frame.grid(row=row_counter, column=0, columnspan=3, pady=5, sticky='w')
-            ttk.Label(day_frame, text=f"{day}:").grid(row=0, column=0, padx=5, pady=5, sticky='w')
-            ttk.Entry(day_frame, textvariable=data['url'], width=50).grid(row=0, column=1, padx=5, pady=5, sticky='w')
-            ttk.Checkbutton(day_frame, text="Loop", variable=data['loop']).grid(row=0, column=2, padx=5, pady=5, sticky='w')
-            data['time_display'] = ttk.Label(day_frame, text=f"Recess: {data['time'].get()}")
-            data['time_display'].grid(row=1, column=1, padx=5, pady=5, sticky='w')
-            data['lunch_time_display'] = ttk.Label(day_frame, text=f"Lunch: {data['lunch_time'].get()}")
-            data['lunch_time_display'].grid(row=1, column=2, padx=5, pady=5, sticky='w')
-            data['label'] = ttk.Label(day_frame, text=f"{day} Song: Not Set", font=("Helvetica", 10))
-            data['label'].grid(row=2, column=0, columnspan=3, padx=5, pady=5, sticky='w')
-            row_counter += 1
-        
-        # Buttons
-        toggle_button = ttk.Button(daily_frame, text="Test Song", command=self.toggle_test_section)
-        toggle_button.grid(row=0, column=0, sticky="w", padx=10, pady=10)
+        self.root.title("Spotify Scheduler")
+        main_frame = ttk.Frame(self.root, padding="10 10 10 10")
+        main_frame.grid(column=0, row=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
-        save_button = ttk.Button(self.root, text="Save URLs and Start Schedule", command=self.save_urls)
-        save_button.pack(pady=10)
+        for i, (day, data) in enumerate(self.urls.items()):
+            ttk.Label(main_frame, text=day).grid(column=0, row=i, sticky=tk.W)
+            ttk.Entry(main_frame, textvariable=data['url'], width=50).grid(column=1, row=i, sticky=(tk.W, tk.E))
+            ttk.Label(main_frame, textvariable=data['url']).grid(column=2, row=i, sticky=(tk.W, tk.E))
+            ttk.Checkbutton(main_frame, text="Loop", variable=data['loop']).grid(column=3, row=i, sticky=tk.W)
+            data['label'].grid(column=0, row=i + len(self.urls), sticky=(tk.W, tk.E))
+            data['time_display'].grid(column=1, row=i + len(self.urls), sticky=(tk.W, tk.E))
+            data['lunch_time_display'].grid(column=2, row=i + len(self.urls), sticky=(tk.W, tk.E))
 
-        change_times_button = ttk.Button(daily_frame, text="Music Times", command=self.change_music_times)
-        change_times_button.grid(row=0, column=2, sticky="e", padx=10, pady=10)
+        button_frame = ttk.Frame(main_frame)
+        button_frame.grid(column=0, row=len(self.urls) * 2, columnspan=4, pady=10)
+        ttk.Button(button_frame, text="Save URLs", command=self.save_urls).grid(column=0, row=0, padx=5)
+        ttk.Button(button_frame, text="Change Music Times", command=self.change_music_times).grid(column=1, row=0, padx=5)
+        ttk.Button(button_frame, text="Toggle Test Section", command=self.toggle_test_section).grid(column=2, row=0, padx=5)
+
+        self.clock_label = ttk.Label(main_frame, text="")
+        self.clock_label.grid(column=0, row=len(self.urls) * 2 + 1, columnspan=4)
 
 
-root = ThemedTk(theme="scidpurple")
-root.title("Spotify Song Player")
-
-app = SpotifyApp(root)
-
-# Load URLs when the script starts
-app.load_urls()
-
-root.mainloop()
+if __name__ == "__main__":
+    root = ThemedTk(theme="radiance")
+    app = SpotifyApp(root)
+    root.mainloop()
