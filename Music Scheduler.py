@@ -15,8 +15,8 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 # Replace these with your Spotify app credentials
-SPOTIPY_CLIENT_ID = 'SPOTIPY_CLIENT_ID'
-SPOTIPY_CLIENT_SECRET = 'SPOTIPY_CLIENT_SECRET'
+SPOTIPY_CLIENT_ID = 'your_spotify_client_id'
+SPOTIPY_CLIENT_SECRET = 'your_spotify_client_secret'
 SPOTIPY_REDIRECT_URI = 'http://localhost:8888/callback'
 scope = "user-modify-playback-state user-read-playback-state"
 
@@ -28,6 +28,8 @@ class SpotifyApp:
         self.test_device_id = None
         self.test_window = None
         self.urls = self.init_urls()
+        self.original_urls = {}
+        self.unsaved_changes = False
         self.scheduled_threads = {}  # Dictionary to track scheduled threads and control events
 
         self.authenticate_spotify()
@@ -157,6 +159,8 @@ class SpotifyApp:
         url_data = {day: data['url'].get() for day, data in self.urls.items()}
         with open("urls.json", "w") as file:
             json.dump(url_data, file)
+        self.original_urls = url_data  # Save the current state as the original
+        self.reset_unsaved_changes_status()
         for day, data in self.urls.items():
             url = data['url'].get()
             if url:
@@ -173,6 +177,7 @@ class SpotifyApp:
             for day, url in url_data.items():
                 if day in self.urls:
                     self.urls[day]['url'].set(url)
+                    self.original_urls[day] = url
                     self.validate_url_async(url, day)
 
     def toggle_test_section(self):
@@ -206,38 +211,26 @@ class SpotifyApp:
             ttk.Label(change_times_frame, text="Lunch:").grid(column=3, row=i, sticky=tk.W)
             ttk.Entry(change_times_frame, textvariable=data['lunch_time'], width=10).grid(column=4, row=i, sticky=tk.W)
 
-        ttk.Button(change_times_frame, text="Save Times", command=save_times).grid(column=0, row=len(self.urls), columnspan=5)
+        save_button = ttk.Button(change_times_frame, text="Save", command=save_times)
+        save_button.grid(column=0, row=len(self.urls), columnspan=5, pady=10)
 
     def create_test_window(self):
         self.test_window = tk.Toplevel(self.root)
-        self.test_window.title("Test Section")
+        self.test_window.title("Test Music Playback")
         self.test_window.attributes("-topmost", True)
+
         test_frame = ttk.Frame(self.test_window, padding="10 10 10 10")
         test_frame.grid(column=0, row=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
+        ttk.Label(test_frame, text="Spotify URL:").grid(column=0, row=0, sticky=tk.W)
         self.test_url_entry = ttk.Entry(test_frame, width=50)
-        self.test_url_entry.grid(column=0, row=0, sticky=(tk.W, tk.E))
-        self.test_url_entry.insert(0, "Enter Spotify URL for testing...")
+        self.test_url_entry.grid(column=1, row=0, sticky=(tk.W, tk.E))
 
-        test_buttons_frame = ttk.Frame(test_frame)
-        test_buttons_frame.grid(column=0, row=1, sticky=(tk.W, tk.E))
-        ttk.Button(test_buttons_frame, text="Play Test Song", command=self.play_test_song).grid(column=0, row=0)
-        ttk.Button(test_buttons_frame, text="Stop Test Song", command=self.stop_test_song).grid(column=1, row=0)
+        play_button = ttk.Button(test_frame, text="Play Test Song", command=self.play_test_song)
+        play_button.grid(column=0, row=1, pady=10)
 
-    def init_urls(self):
-        days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-        urls = {}
-        for day in days:
-            urls[day] = {
-                'url': tk.StringVar(),
-                'time': tk.StringVar(value="11:25"),
-                'lunch_time': tk.StringVar(value="14:10"),
-                'label': ttk.Label(self.root, text=f"{day} Song:"),
-                'time_display': ttk.Label(self.root, text="Recess: 11:25"),
-                'lunch_time_display': ttk.Label(self.root, text="Lunch: 14:10"),
-                'loop': tk.BooleanVar(value=True)  # Set loop to True by default
-            }
-        return urls
+        stop_button = ttk.Button(test_frame, text="Stop Test Song", command=self.stop_test_song)
+        stop_button.grid(column=1, row=1, pady=10)
 
     def create_ui(self):
         self.root.title("Spotify Scheduler")
@@ -246,9 +239,12 @@ class SpotifyApp:
 
         for i, (day, data) in enumerate(self.urls.items()):
             ttk.Label(main_frame, text=day).grid(column=0, row=i, sticky=tk.W)
-            ttk.Entry(main_frame, textvariable=data['url'], width=50).grid(column=1, row=i, sticky=(tk.W, tk.E))
-            ttk.Label(main_frame, textvariable=data['url']).grid(column=2, row=i, sticky=(tk.W, tk.E))
-            ttk.Checkbutton(main_frame, text="Loop", variable=data['loop']).grid(column=3, row=i, sticky=tk.W)
+            url_entry = ttk.Entry(main_frame, textvariable=data['url'], width=50)
+            url_entry.grid(column=1, row=i, sticky=(tk.W, tk.E))
+            url_entry.bind("<KeyRelease>", lambda event, d=day: self.on_url_change(d))
+
+            ttk.Checkbutton(main_frame, text="Loop", variable=data['loop']).grid(column=2, row=i, sticky=tk.W)
+
             data['label'].grid(column=0, row=i + len(self.urls), sticky=(tk.W, tk.E))
             data['time_display'].grid(column=1, row=i + len(self.urls), sticky=(tk.W, tk.E))
             data['lunch_time_display'].grid(column=2, row=i + len(self.urls), sticky=(tk.W, tk.E))
@@ -259,11 +255,49 @@ class SpotifyApp:
         ttk.Button(button_frame, text="Change Music Times", command=self.change_music_times).grid(column=1, row=0, padx=5)
         ttk.Button(button_frame, text="Toggle Test Section", command=self.toggle_test_section).grid(column=2, row=0, padx=5)
 
-        self.clock_label = ttk.Label(main_frame, text="")
-        self.clock_label.grid(column=0, row=len(self.urls) * 2 + 1, columnspan=4)
+        self.unsaved_label = ttk.Label(main_frame, text="Changes have not been saved!", foreground="red")
+        self.unsaved_label.grid(column=0, row=len(self.urls) * 2 + 1, columnspan=4)
+        self.unsaved_label.grid_remove()
 
+        self.clock_label = ttk.Label(main_frame, text="")
+        self.clock_label.grid(column=0, row=len(self.urls) * 2 + 2, columnspan=4)
+
+    def init_urls(self):
+        days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+        return {
+            day: {
+                "url": tk.StringVar(),
+                "loop": tk.BooleanVar(value=True),  # Loop on by default
+                "time": tk.StringVar(value="11:25"),  # Default recess time
+                "lunch_time": tk.StringVar(value="14:10"),  # Default lunch time
+                "label": ttk.Label(self.root, text=f"{day} Song:"),
+                "time_display": ttk.Label(self.root, text="Recess: 11:25"),
+                "lunch_time_display": ttk.Label(self.root, text="Lunch: 14:10")
+            }
+            for day in days
+        }
+
+    def on_url_change(self, day):
+        # Check if the URL has been modified
+        if self.urls[day]['url'].get() != self.original_urls.get(day, ''):
+            self.urls[day]['label'].config(style="Unsaved.TLabel")
+            self.unsaved_changes = True
+            self.unsaved_label.grid()  # Show the unsaved changes label
+        else:
+            self.urls[day]['label'].config(style="TLabel")  # Reset to default style
+            if not any(self.urls[d]['url'].get() != self.original_urls.get(d, '') for d in self.urls):
+                self.unsaved_changes = False
+                self.unsaved_label.grid_remove()  # Hide the unsaved changes label if no unsaved changes
+
+    def reset_unsaved_changes_status(self):
+        for day, data in self.urls.items():
+            data['label'].config(style="TLabel")
+        self.unsaved_changes = False
+        self.unsaved_label.grid_remove()  # Hide the unsaved changes label
 
 if __name__ == "__main__":
-    root = ThemedTk(theme="radiance")
+    root = ThemedTk(theme="arc")
+    style = ttk.Style()
+    style.configure("Unsaved.TLabel", foreground="red")
     app = SpotifyApp(root)
     root.mainloop()
