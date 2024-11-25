@@ -243,6 +243,10 @@ class SpotifyApp:
             url_entry.grid(column=1, row=i, sticky=(tk.W, tk.E))
             url_entry.bind("<KeyRelease>", lambda event, d=day: self.on_url_change(d))
 
+            # Add Paste button
+            paste_button = ttk.Button(main_frame, text="Paste", command=lambda d=day: self.paste_url(d))
+            paste_button.grid(column=3, row=i, sticky=tk.W)  # Position the Paste button next to the URL entry
+
             ttk.Checkbutton(main_frame, text="Loop", variable=data['loop']).grid(column=2, row=i, sticky=tk.W)
 
             data['label'].grid(column=0, row=i + len(self.urls), sticky=(tk.W, tk.E))
@@ -261,6 +265,15 @@ class SpotifyApp:
 
         self.clock_label = ttk.Label(main_frame, text="")
         self.clock_label.grid(column=0, row=len(self.urls) * 2 + 2, columnspan=4)
+
+    def paste_url(self, day):
+        try:
+            clipboard_content = self.root.clipboard_get()  # Get content from clipboard
+            self.urls[day]['url'].set(clipboard_content)   # Set the clipboard content to the URL field
+            self.on_url_change(day)  # Call the on_url_change method to mark as unsaved
+        except Exception as e:
+            logging.error(f"Error pasting URL: {e}")
+            messagebox.showerror("Error", "Failed to paste from clipboard.")
 
     def init_urls(self):
         days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
