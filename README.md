@@ -62,7 +62,7 @@ Run the Script:
 
     python music_scheduler.py
 
-After running the script and clicking Save URLs for the first time, a JSON file will be created to hold all set music, so in the change the device running the script loses power, apon restarting the application, your music will still be there. BUT you will need to click "save URLS" for it to thread the songs.
+After running the script and clicking Save URLs for the first time, a JSON file will be created to hold all set music, so in the chance the device running the script loses power, apon restarting the script, your music will still be there. BUT you will need to click "save URLS" for it to thread the songs.
 
 GUI Instructions:
 - Clock: Displays the current date and time.
