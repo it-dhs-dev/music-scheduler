@@ -1,18 +1,18 @@
 # Spotify Music Scheduler
 
-This Python script provides a graphical user interface (GUI) to schedule Spotify music playback as a signal for students. It allows users to specify Spotify track URLs for each day of the week, which will be played on a loop at specific times (11:20 AM and 2:10 PM) for a duration of 5 minutes. The script also includes an option for testing song playback.
-
+This Python script provides a graphical user interface (GUI) to schedule Spotify music playback as a signal for students. It allows users to specify Spotify track URLs for each day of the week, which will be played on a loop at specific times (11:20 AM and 2:10 PM) for a duration of 5 minutes.
 ## Features
 
 - **Schedule Songs**: Specify different Spotify track URLs for each day of the week.
 - **Loop Playback**: Option to play songs on a loop.
 - **Timed Playback**: Automatically play songs at 11:20 AM and 2:10 PM for 5 minutes.
+- **Change Time Playback**: You can change reccess or lunch time.
 - **Test Song Playback**: Play a song immediately for testing purposes.
-- **User-Friendly GUI**: Easy-to-use interface with theme support.
+
 
 ## Installation
 
-To set up and run the Spotify Music Scheduler, follow these steps:
+To set up and run the Spotify Music Scheduler:
 
 1. **Clone the Repository**:
    ```sh
@@ -28,7 +28,7 @@ Alternatively, you can manually install the required modules:
 
     pip install spotipy ttkthemes
 
-## Configure Spotify Credentials:
+## Retrieve Spotify Credentials:
 To get your Spotify Client ID and Client Secret, you'll need to create a Spotify Developer account and register a new application. Here are the steps to do that:
 
 1. Sign up for Spotify Developer:
@@ -40,7 +40,7 @@ To get your Spotify Client ID and Client Secret, you'll need to create a Spotify
 2. Once you're logged in, click on the "Create an App" button.
 - Fill in the required details for your application (e.g., name, description, etc.).
 - After filling in the details, click on "Create".
-- Retrieve Client ID and Client Secret:
+- Note down the Client ID and Client Secret
 
 3. After creating the application, you'll be redirected to the application dashboard.
 - Here, you can see your Client ID and Client Secret. You'll need to click on "Show Client Secret" to reveal it.
@@ -51,7 +51,7 @@ To get your Spotify Client ID and Client Secret, you'll need to create a Spotify
 - In the "Redirect URIs" field, add http://localhost:8888/callback or any other URI you plan to use for redirecting after authentication.
 - Click on "Save" to save your settings.
 
-5. Update Client ID, Client secret and callback
+5. Update Client ID, Client secret and callback in your script
 
          CLIENT_ID = 'your_spotify_client_id'
          CLIENT_SECRET = 'your_spotify_client_secret'
@@ -61,6 +61,8 @@ To get your Spotify Client ID and Client Secret, you'll need to create a Spotify
 Run the Script:
 
     python music_scheduler.py
+
+After running the script and clicking Save URLs for the first time, a JSON file will be created to hold all set music, so in the change the device running the script loses power, apon restarting the application, your music will still be there. BUT you will need to click "save URLS" for it to thread the songs.
 
 GUI Instructions:
 - Clock: Displays the current date and time.
